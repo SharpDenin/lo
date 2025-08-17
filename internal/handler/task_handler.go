@@ -1,4 +1,4 @@
-package http
+package handler
 
 import (
 	"encoding/json"
@@ -10,10 +10,10 @@ import (
 )
 
 type TaskHandler struct {
-	taskService service.TaskService
+	taskService *service.TaskService
 }
 
-func NewTaskHandler(taskService service.TaskService) *TaskHandler {
+func NewTaskHandler(taskService *service.TaskService) *TaskHandler {
 	return &TaskHandler{taskService: taskService}
 }
 
@@ -31,18 +31,22 @@ func (h *TaskHandler) HandleTasks(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *TaskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
-	var dto model.CreateTaskDto
-	if err := json.NewDecoder(r.Body).Decode(&dto); err != nil {
+	var m model.Task
+	if err := json.NewDecoder(r.Body).Decode(&m); err != nil {
 		sendError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
-	if dto.Title == "" {
+	if m.Title == "" {
 		sendError(w, http.StatusBadRequest, "Title is required")
 		return
 	}
-	task := h.taskService.Create(dto)
+	task, err := h.taskService.Create(m)
+	if err != nil {
+		sendError(w, http.StatusBadRequest, err.Error())
+		return
+	}
 	if task.Id == 0 {
-		sendError(w, http.StatusConflict, "Cannot create task: maximum 5 pending tasks reached")
+		sendError(w, http.StatusInternalServerError, "Failed to create task")
 		return
 	}
 	sendSuccess(w, http.StatusCreated, task, nil)

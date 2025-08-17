@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"fmt"
 	"lo/internal/model"
 	"lo/internal/repo"
@@ -20,12 +21,25 @@ func NewTaskService(repo repo.TaskStorageInterface, log chan string) *TaskServic
 	}
 }
 
-func (s *TaskService) Create(dto model.CreateTaskDto) model.Task {
-	pendingTasks := s.GetAll("Pending")
-	if len(pendingTasks) >= 5 {
-		s.logAction("Cannot create new task: maximum 5 pending tasks reached")
+func (s *TaskService) Create(m model.Task) (model.Task, error) {
+	if m.Title == "" {
+		s.logAction("Failed to create task: title is required")
+		return model.Task{}, errors.New("title is required")
 	}
-	return model.Task{}
+
+	created := s.repo.Create(m)
+	if created.Id == 0 {
+		s.logAction("Failed to create task: repository error")
+		return model.Task{}, errors.New("repository failed to create task")
+	}
+	created.Status = "Pending"
+	created.Retries = 0
+	s.repo.Update(created)
+
+	go s.process(created.Id)
+
+	s.logAction(fmt.Sprintf("Task created with status Pending"))
+	return created, nil
 }
 
 func (s *TaskService) GetById(id int) model.Task {
