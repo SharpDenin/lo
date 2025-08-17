@@ -7,7 +7,8 @@ import (
 
 type TaskStorageInterface interface {
 	GetAll(status string) []model.Task
-	GetById(id int) (model.Task, bool)
+	GetById(id int) model.Task
+	Update(task model.Task) model.Task
 	Create(task model.Task) model.Task
 }
 
@@ -34,12 +35,20 @@ func (r *TaskStorage) Create(task model.Task) model.Task {
 	return task
 }
 
-func (r *TaskStorage) GetById(id int) (model.Task, bool) {
+func (r *TaskStorage) Update(task model.Task) model.Task {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.task[task.Id] = task
+	return task
+}
+
+func (r *TaskStorage) GetById(id int) model.Task {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	task, ok := r.task[id]
-	return task, ok
+	task := r.task[id]
+	return task
 }
 
 func (r *TaskStorage) GetAll(status string) []model.Task {
