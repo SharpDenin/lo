@@ -24,8 +24,8 @@ func (s *TaskService) Create(dto model.CreateTaskDto) model.Task {
 	pendingTasks := s.GetAll("Pending")
 	if len(pendingTasks) >= 5 {
 		s.logAction("Cannot create new task: maximum 5 pending tasks reached")
-		return model.Task{}
 	}
+	return model.Task{}
 }
 
 func (s *TaskService) GetById(id int) model.Task {
@@ -71,6 +71,12 @@ func (s *TaskService) process(id int) {
 			s.logAction(fmt.Sprintf("Task %d status changed to Completed", id))
 			break
 		}
+	}
+}
+
+func LogWorker(logChan <-chan string) {
+	for logMsg := range logChan {
+		fmt.Printf("[LOG] %s\n", logMsg)
 	}
 }
 
